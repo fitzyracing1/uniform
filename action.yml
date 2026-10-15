@@ -1,0 +1,43 @@
+name: uniform
+description: Check a repo against the uniform house style (ESLint + Prettier, shared config). Lit or dark.
+branding:
+  icon: check-square
+  color: green
+inputs:
+  path:
+    description: Directory to check, relative to the workspace.
+    default: .
+outputs:
+  status:
+    description: lit or dark
+    value: ${{ steps.check.outputs.status }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Install uniform
+      shell: bash
+      run: npm ci --omit=dev --no-audit --no-fund --prefix "$GITHUB_ACTION_PATH"
+    - name: Check
+      id: check
+      shell: bash
+      env:
+        TARGET: ${{ inputs.path }}
+      run: |
+        set +e
+        node "$GITHUB_ACTION_PATH/bin/uniform.js" check "$TARGET" | tee uniform-report.txt
+        code=${PIPESTATUS[0]}
+        set -e
+        if [ "$code" = 0 ]; then status=lit; elif [ "$code" = 1 ]; then status=dark; else exit "$code"; fi
+        echo "status=$status" >> "$GITHUB_OUTPUT"
+        {
+          echo "### uniform: $status"
+          echo
+          echo '```'
+          cat uniform-report.txt
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+        rm -f uniform-report.txt
+        [ "$status" = lit ]

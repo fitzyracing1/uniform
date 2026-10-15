@@ -1,0 +1,47 @@
+{
+  "name": "@fitzyracing1/uniform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One house style for code that reads hand-written: STYLE.md, a shared ESLint + Prettier config, a GitHub Action and a small check service. Reports lit or dark.",
+  "license": "MIT",
+  "author": "Joshua Almeida",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fitzyracing1/uniform.git"
+  },
+  "main": "eslint.config.js",
+  "exports": {
+    ".": "./eslint.config.js",
+    "./eslint": "./eslint.config.js",
+    "./prettier": "./prettier.json",
+    "./check": "./lib/check.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "uniform": "bin/uniform.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "eslint.config.js",
+    "prettier.json",
+    "STYLE.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node bin/uniform.js check .",
+    "test": "node --test test/",
+    "start": "node service/server.js"
+  },
+  "dependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2"
+  }
+}
