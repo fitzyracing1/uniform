@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { check } = require('../lib/check');
+const { learn } = require('../lib/style-md');
 
 const PORT = Number(process.env.PORT ?? 3000);
 const CACHE_MS = Number(process.env.CACHE_SECONDS ?? 600) * 1000;
@@ -41,24 +42,39 @@ async function download(owner, repo, ref, dir) {
   await done;
 }
 
+// Download, run, delete. The tarball only ever lives in a temp dir for the length of one request.
+async function withRepo(owner, repo, ref, run) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'uniform-'));
+  try {
+    await download(owner, repo, ref, dir);
+    return await run(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 async function runCheck(owner, repo, ref) {
   const key = `${owner}/${repo}@${ref}`.toLowerCase();
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.promise;
-  const promise = (async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'uniform-'));
-    try {
-      await download(owner, repo, ref, dir);
-      const result = await check(dir);
-      return { repo: `${owner}/${repo}`, ref, checkedAt: new Date().toISOString(), ...result };
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  })();
+  const promise = withRepo(owner, repo, ref, async (dir) => ({
+    repo: `${owner}/${repo}`,
+    ref,
+    checkedAt: new Date().toISOString(),
+    ...(await check(dir)),
+  }));
   cache.set(key, { at: Date.now(), promise });
   // failures shouldn't stick around for ten minutes
   promise.catch(() => cache.delete(key));
   return promise;
+}
+
+// Stateless on purpose: no cache, nothing kept. The profile is numbers about the code, not the code.
+function runLearn(owner, repo, ref) {
+  return withRepo(owner, repo, ref, (dir) => {
+    const { profile, style } = learn(dir, { write: false });
+    return { repo: `${owner}/${repo}`, ref, learnedAt: new Date().toISOString(), profile, style };
+  });
 }
 
 function badge(status) {
@@ -87,24 +103,29 @@ function send(res, status, type, body, extra = {}) {
 async function handle(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const parts = url.pathname.split('/').filter(Boolean);
-  if (req.method !== 'GET') return send(res, 405, 'text/plain', 'GET only\n');
+  const learning = parts[0] === 'learn';
+  if (req.method !== 'GET' && !(learning && req.method === 'POST'))
+    return send(res, 405, 'text/plain', 'GET only (POST also works for /learn)\n');
   if (parts.length === 0) {
     return send(
       res,
       200,
       'text/plain',
-      'uniform\n\nGET /check/:owner/:repo[?ref=main]   lit/dark + findings as JSON\nGET /badge/:owner/:repo[?ref=main]   SVG badge\nGET /healthz\n',
+      'uniform\n\nGET /check/:owner/:repo[?ref=main]   lit/dark + findings as JSON\nGET /badge/:owner/:repo[?ref=main]   SVG badge\nGET|POST /learn/:owner/:repo[?ref=main]   learned style profile + STYLE.md (nothing stored)\nGET /healthz\n',
     );
   }
   if (parts[0] === 'healthz') return send(res, 200, 'text/plain', 'ok\n');
   const [route, owner, rawRepo] = parts;
-  if (!['check', 'badge'].includes(route) || parts.length !== 3) return send(res, 404, 'text/plain', 'not found\n');
+  if (!['check', 'badge', 'learn'].includes(route) || parts.length !== 3)
+    return send(res, 404, 'text/plain', 'not found\n');
   const repo = rawRepo.replace(/\.(svg|json)$/, '');
   const ref = url.searchParams.get('ref') ?? 'HEAD';
   if (!NAME.test(owner) || !NAME.test(repo) || !REF.test(ref) || ref.includes('..')) {
     return send(res, 400, 'application/json', JSON.stringify({ error: 'bad owner, repo or ref' }) + '\n');
   }
   try {
+    if (learning)
+      return send(res, 200, 'application/json', JSON.stringify(await runLearn(owner, repo, ref), null, 2) + '\n');
     const result = await runCheck(owner, repo, ref);
     if (route === 'badge')
       return send(res, 200, 'image/svg+xml', badge(result.status), { 'cache-control': 'max-age=300' });

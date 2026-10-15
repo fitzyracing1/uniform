@@ -32,6 +32,25 @@ export { default } from '@fitzyracing1/uniform/eslint';
 Or skip the wiring and run `npx uniform check` (add `--fix` to fix what can be fixed, `--json` for machines).
 Paths in `.uniformignore` (gitignore style) are skipped by both tools.
 
+## Learn your own style
+
+The defaults are my style. If you'd rather be held to *yours*:
+
+```sh
+npx uniform learn .        # or: uniform learn path/to/your/code --dry-run
+```
+
+It reads your TS/JS on your machine (nothing is uploaded) and measures your habits: naming style and length,
+function length, nesting depth, comment density and how many comments explain *why* rather than *what*, JSDoc,
+quotes, semicolons, indent, line width, trailing commas, import style and error handling. It writes:
+
+- `uniform.profile.json`: the numbers plus the thresholds and formatter settings derived from them
+- `STYLE.md`: the same thing in first person ("Half my functions are 4 lines or less…"). If you already have a
+  hand-written STYLE.md it's left alone and the result goes to `STYLE.learned.md` (`--force` to overwrite).
+
+Once the profile is in the repo, `uniform check` and the Action use it instead of the defaults. Only the settings
+`learn` writes are honoured, so a profile can't switch on arbitrary rules.
+
 ## Use the Action
 
 ```yaml
@@ -56,7 +75,11 @@ npm start                     # PORT=3000 by default
 curl localhost:3000/check/fitzyracing1/fakegreen-handwritten
 curl "localhost:3000/check/fitzyracing1/fakegreen-handwritten?ref=style/uniform"
 curl localhost:3000/badge/fitzyracing1/fakegreen-handwritten.svg
+curl -X POST localhost:3000/learn/fitzyracing1/fakegreen-handwritten
 ```
+
+`GET` or `POST /learn/:owner/:repo[?ref=]` returns `{ profile, style }` learned from a public repo. It's
+stateless: the tarball is deleted as soon as the profile is built, and nothing is cached or stored.
 
 `/check` returns `{ repo, ref, checkedAt, status: "lit" | "dark", findings: [...] }`. It downloads the repo's
 tarball from GitHub, checks it, and deletes it. It never loads the repo's own ESLint or Prettier config, so
