@@ -17,7 +17,7 @@ function project(files) {
 
 test('clean code is lit', async () => {
   const dir = project({ 'src/add.ts': 'export function add(a: number, b: number): number {\n  return a + b;\n}\n' });
-  assert.deepEqual(await check(dir), { status: 'lit', findings: [] });
+  assert.deepEqual(await check(dir), { status: 'lit', profile: null, findings: [] });
 });
 
 test('boilerplate JSDoc, any, bad names and formatting go dark', async () => {
