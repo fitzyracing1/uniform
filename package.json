@@ -33,7 +33,7 @@
   },
   "scripts": {
     "check": "node bin/uniform.js check .",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "start": "node service/server.js"
   },
   "dependencies": {
