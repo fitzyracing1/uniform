@@ -52,3 +52,8 @@ test('badge says lit or dark', () => {
   assert.match(badge('lit'), /uniform: lit/);
   assert.match(badge('dark'), /uniform: dark/);
 });
+
+test('json files named like tests are not linted as code', async () => {
+  const dir = project({ 'tsconfig.test.json': '{ "extends": "./tsconfig.json" }\n' });
+  assert.equal((await check(dir)).status, 'lit');
+});

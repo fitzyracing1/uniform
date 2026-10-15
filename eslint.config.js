@@ -57,7 +57,7 @@ module.exports = tseslint.config(
   },
   {
     // tests feed deliberately wrong values into typed APIs, and long describe() blocks are fine
-    files: ['**/test/**', '**/tests/**', '**/*.test.*', '**/*.spec.*'],
+    files: ['**/{test,tests}/**/*.{ts,tsx,mts,cts,js,cjs,mjs}', '**/*.{test,spec}.{ts,tsx,mts,cts,js,cjs,mjs}'],
     rules: { 'max-lines-per-function': 'off', '@typescript-eslint/no-explicit-any': 'off' },
   },
 );
