@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # try/** so throwaway branches get a light without opening a PR
+    branches: [main, 'try/**']
   pull_request:
 
 permissions:
